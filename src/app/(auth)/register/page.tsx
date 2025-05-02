@@ -1,22 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { motion } from "framer-motion";
+import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -26,240 +19,284 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Loader2 } from "lucide-react";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Github, GitPullRequestArrow, Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
-const pakistaniCities = [
-  "Karachi",
-  "Lahore",
-  "Islamabad",
-  "Rawalpindi",
-  "Faisalabad",
-  "Multan",
-  "Peshawar",
-  "Quetta",
-  "Sialkot",
-  "Gujranwala",
-  "Other",
-];
-
-const signupSchema = z
+// Form schema for validation
+const formSchema = z
   .object({
-    fullName: z
-      .string()
-      .min(3, { message: "Name must be at least 3 characters" }),
-    cnic: z.string().regex(/^[0-9]{5}-[0-9]{7}-[0-9]{1}$/, {
-      message: "CNIC must be in format: 12345-1234567-1",
-    }),
-    phoneNumber: z.string().regex(/^(\+92|92|0)(3\d{9})$/, {
-      message: "Please enter a valid Pakistani phone number",
-    }),
-    location: z.string().min(1, { message: "Please select your city" }),
+    name: z.string().min(2, { message: "Name must be at least 2 characters" }),
     email: z.string().email({ message: "Please enter a valid email address" }),
     password: z
       .string()
-      .min(8, { message: "Password must be at least 8 characters" })
-      .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z]).{8,}$/, {
-        message:
-          "Password must include uppercase, lowercase, number and special character",
-      }),
+      .min(8, { message: "Password must be at least 8 characters" }),
     confirmPassword: z.string(),
+    agreeToTerms: z.boolean().refine((val) => val === true, {
+      message: "You must agree to the terms and conditions",
+    }),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",
     path: ["confirmPassword"],
   });
 
-type SignupFormValues = z.infer<typeof signupSchema>;
-
-export default function Signup() {
+export default function RegisterPage() {
   const router = useRouter();
+  const { theme } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  const form = useForm<SignupFormValues>({
-    resolver: zodResolver(signupSchema),
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
-      fullName: "",
-      cnic: "",
-      phoneNumber: "",
-      location: "",
+      name: "",
       email: "",
       password: "",
       confirmPassword: "",
+      agreeToTerms: false,
     },
   });
 
-  function onSubmit(data: SignupFormValues) {
+  function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-
     // Simulate API call
     setTimeout(() => {
-      console.log(data);
+      console.log(values);
       setIsLoading(false);
-      // Redirect to login page after successful signup
-      router.push("/login");
-    }, 2000);
+      // Redirect after successful registration
+      router.push("/auth/login");
+    }, 1500);
   }
 
+  if (!mounted) {
+    return null;
+  }
+
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        type: "spring",
+        stiffness: 100,
+      },
+    },
+  };
+
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-100 py-8">
+    <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-background to-muted p-4">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        className="w-full max-w-md"
+        initial="hidden"
+        animate="visible"
+        variants={containerVariants}
       >
-        <Card className="w-96">
-          <CardHeader>
-            <CardTitle className="text-2xl text-center">AkTeraAkMera</CardTitle>
-            <CardDescription className="text-center">
-              Create a new exchange account
-            </CardDescription>
+        <Card className="border-border/40 bg-background/95 backdrop-blur-sm">
+          <CardHeader className="space-y-1">
+            <motion.div variants={itemVariants}>
+              <CardTitle className="text-2xl font-bold text-foreground text-center">
+                Create an account
+              </CardTitle>
+            </motion.div>
+            <motion.div variants={itemVariants}>
+              <CardDescription className="text-muted-foreground text-center">
+                Enter your information to create an account
+              </CardDescription>
+            </motion.div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            <motion.div
+              className="flex flex-col space-y-2 text-center"
+              variants={itemVariants}
+            >
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  className="flex items-center justify-center gap-2"
+                >
+                  <GitPullRequestArrow className="h-4 w-4" />
+                  <span>Google</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex items-center justify-center gap-2"
+                >
+                  <Github className="h-4 w-4" />
+                  <span>GitHub</span>
+                </Button>
+              </div>
+              <div className="relative flex items-center justify-center">
+                <span className="absolute inset-x-0 h-px bg-border" />
+                <span className="relative bg-background px-2 my-3 text-xs text-muted-foreground">
+                  OR CONTINUE WITH
+                </span>
+              </div>
+            </motion.div>
+
             <Form {...form}>
               <form
                 onSubmit={form.handleSubmit(onSubmit)}
                 className="space-y-4"
               >
-                <FormField
-                  control={form.control}
-                  name="fullName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="John Doe" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="cnic"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>CNIC</FormLabel>
-                      <FormControl>
-                        <Input placeholder="12345-1234567-1" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="phoneNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone Number</FormLabel>
-                      <FormControl>
-                        <Input placeholder="+923XXXXXXXXX" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="location"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Location</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
+                <motion.div variants={itemVariants}>
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Full Name</FormLabel>
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select your city" />
-                          </SelectTrigger>
+                          <Input
+                            placeholder="John Doe"
+                            {...field}
+                            className="bg-background"
+                          />
                         </FormControl>
-                        <SelectContent>
-                          {pakistaniCities.map((city) => (
-                            <SelectItem key={city} value={city}>
-                              {city}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input placeholder="john.doe@example.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="password"
-                          placeholder="********"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="confirmPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Confirm Password</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="password"
-                          placeholder="********"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button className="w-full" type="submit" disabled={isLoading}>
-                  {isLoading ? (
-                    <>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </motion.div>
+
+                <motion.div variants={itemVariants}>
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="your.email@example.com"
+                            {...field}
+                            className="bg-background"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </motion.div>
+
+                <motion.div variants={itemVariants}>
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="password"
+                            placeholder="••••••••"
+                            {...field}
+                            className="bg-background"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </motion.div>
+
+                <motion.div variants={itemVariants}>
+                  <FormField
+                    control={form.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Confirm Password</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="password"
+                            placeholder="••••••••"
+                            {...field}
+                            className="bg-background"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </motion.div>
+
+                <motion.div variants={itemVariants}>
+                  <FormField
+                    control={form.control}
+                    name="agreeToTerms"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-2 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-sm font-medium text-muted-foreground">
+                            I agree to the{" "}
+                            <Link
+                              href="/terms"
+                              className="text-primary underline hover:text-primary/90"
+                            >
+                              terms and conditions
+                            </Link>
+                          </FormLabel>
+                          <FormMessage />
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                </motion.div>
+
+                <motion.div variants={itemVariants}>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating account...
-                    </>
-                  ) : (
-                    "Sign Up"
-                  )}
-                </Button>
+                    ) : null}
+                    Create Account
+                  </Button>
+                </motion.div>
               </form>
             </Form>
           </CardContent>
-          <CardFooter className="flex justify-center">
-            <p className="text-sm text-gray-500">
+          <CardFooter>
+            <motion.p
+              className="text-center text-sm text-muted-foreground w-full"
+              variants={itemVariants}
+            >
               Already have an account?{" "}
-              <Link href="/login" className="text-blue-600 hover:underline">
-                Login
+              <Link
+                href="/login"
+                className="text-primary font-medium hover:underline"
+              >
+                Sign in
               </Link>
-            </p>
+            </motion.p>
           </CardFooter>
         </Card>
       </motion.div>

@@ -1,22 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
+import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -26,87 +19,67 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, UserCircle, Mail, Phone, Lock } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Github, Loader2 } from "lucide-react";
 
-const usernameSchema = z.object({
-  identifier: z
-    .string()
-    .min(3, { message: "Username must be at least 3 characters" }),
+// Form schema for validation
+const formSchema = z.object({
+  email: z.string().email({ message: "Please enter a valid email address" }),
   password: z
     .string()
     .min(8, { message: "Password must be at least 8 characters" }),
+  rememberMe: z.boolean().optional(),
 });
 
-const emailSchema = z.object({
-  identifier: z.string().email({ message: "Please enter a valid email" }),
-  password: z
-    .string()
-    .min(8, { message: "Password must be at least 8 characters" }),
-});
-
-const phoneSchema = z.object({
-  identifier: z.string().regex(/^(\+92|92|0)(3\d{9})$/, {
-    message: "Please enter a valid Pakistani phone number",
-  }),
-  password: z
-    .string()
-    .min(8, { message: "Password must be at least 8 characters" }),
-});
-
-type LoginFormValues = z.infer<typeof usernameSchema>;
-
-export default function Login() {
+export default function LoginPage() {
   const router = useRouter();
+  const { theme } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
-  const [loginMethod, setLoginMethod] = useState("username");
+  const [mounted, setMounted] = useState(false);
 
-  const getSchema = () => {
-    switch (loginMethod) {
-      case "email":
-        return emailSchema;
-      case "phone":
-        return phoneSchema;
-      default:
-        return usernameSchema;
-    }
-  };
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  const form = useForm<LoginFormValues>({
-    resolver: zodResolver(getSchema()),
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
-      identifier: "",
+      email: "",
       password: "",
+      rememberMe: false,
     },
   });
 
-  function onSubmit(data: LoginFormValues) {
+  function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-
     // Simulate API call
     setTimeout(() => {
-      console.log({ loginMethod, ...data });
+      console.log(values);
       setIsLoading(false);
-      // Redirect to dashboard or home after successful login
+      // Redirect after successful login
       router.push("/dashboard");
     }, 1500);
   }
 
+  if (!mounted) {
+    return null;
+  }
+
+  // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
-        when: "beforeChildren",
         staggerChildren: 0.1,
-      },
-    },
-    exit: {
-      opacity: 0,
-      transition: {
-        when: "afterChildren",
-        staggerChildren: 0.05,
-        staggerDirection: -1,
       },
     },
   };
@@ -118,202 +91,165 @@ export default function Login() {
       opacity: 1,
       transition: {
         type: "spring",
-        stiffness: 300,
-        damping: 24,
+        stiffness: 100,
       },
     },
-    exit: { y: -20, opacity: 0 },
-  };
-
-  const getLoginLabel = () => {
-    switch (loginMethod) {
-      case "email":
-        return "Email";
-      case "phone":
-        return "Phone Number";
-      default:
-        return "Username";
-    }
-  };
-
-  const getLoginPlaceholder = () => {
-    switch (loginMethod) {
-      case "email":
-        return "you@example.com";
-      case "phone":
-        return "+923XXXXXXXXX";
-      default:
-        return "yourusername";
-    }
-  };
-
-  const getLoginIcon = () => {
-    switch (loginMethod) {
-      case "email":
-        return <Mail className="h-4 w-4 text-muted-foreground" />;
-      case "phone":
-        return <Phone className="h-4 w-4 text-muted-foreground" />;
-      default:
-        return <UserCircle className="h-4 w-4 text-muted-foreground" />;
-    }
-  };
-
-  const handleTabChange = (value: string) => {
-    form.reset({ identifier: "", password: "" });
-    setLoginMethod(value);
   };
 
   return (
-    <div className="flex flex-col justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 p-4 transition-all duration-300">
-      <div className="absolute top-4 right-4 z-10">
-        {/* <ThemeToggle /> */}
-        <h2>Hello</h2>
-      </div>
-
+    <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-background to-muted p-4">
       <motion.div
-        variants={containerVariants}
+        className="w-full max-w-md"
         initial="hidden"
         animate="visible"
-        exit="exit"
-        className="w-full max-w-md"
+        variants={containerVariants}
       >
-        <motion.div variants={itemVariants}>
-          <Card className="border-none shadow-lg backdrop-blur-sm bg-white/90 dark:bg-gray-950/90">
-            <CardHeader className="space-y-2">
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                className="mx-auto overflow-hidden relative w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center"
-              >
-                <span className="text-white font-bold text-xl">AkTM</span>
-                <div className="absolute inset-0 bg-white dark:bg-gray-950 mix-blend-overlay opacity-10"></div>
-              </motion.div>
-
-              <CardTitle className="text-2xl text-center font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-600">
-                AkTeraAkMera
+        <Card className="border-border/40 bg-background/95 backdrop-blur-sm">
+          <CardHeader className="space-y-1">
+            <motion.div variants={itemVariants}>
+              <CardTitle className="text-2xl font-bold text-foreground text-center">
+                Welcome back
               </CardTitle>
-              <CardDescription className="text-center">
-                Welcome back! Log in to your account
+            </motion.div>
+            <motion.div variants={itemVariants}>
+              <CardDescription className="text-muted-foreground text-center">
+                Sign in to your account to continue
               </CardDescription>
-            </CardHeader>
-
-            <CardContent className="space-y-4">
-              <Tabs
-                defaultValue="username"
-                className="w-full"
-                onValueChange={handleTabChange}
-              >
-                <TabsList className="grid grid-cols-3 mb-4">
-                  <TabsTrigger value="username">Username</TabsTrigger>
-                  <TabsTrigger value="email">Email</TabsTrigger>
-                  <TabsTrigger value="phone">Phone</TabsTrigger>
-                </TabsList>
-
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={loginMethod}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Form {...form}>
-                      <form
-                        onSubmit={form.handleSubmit(onSubmit)}
-                        className="space-y-4"
-                      >
-                        <FormField
-                          control={form.control}
-                          name="identifier"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>{getLoginLabel()}</FormLabel>
-                              <FormControl>
-                                <div className="relative">
-                                  <div className="absolute left-3 top-3">
-                                    {getLoginIcon()}
-                                  </div>
-                                  <Input
-                                    className="pl-10"
-                                    placeholder={getLoginPlaceholder()}
-                                    {...field}
-                                  />
-                                </div>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="password"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Password</FormLabel>
-                              <FormControl>
-                                <div className="relative">
-                                  <div className="absolute left-3 top-3">
-                                    <Lock className="h-4 w-4 text-muted-foreground" />
-                                  </div>
-                                  <Input
-                                    className="pl-10"
-                                    type="password"
-                                    placeholder="••••••••"
-                                    {...field}
-                                  />
-                                </div>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <div className="flex justify-end">
-                          <Link
-                            href="/reset-password"
-                            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                          >
-                            Forgot password?
-                          </Link>
-                        </div>
-                        <Button
-                          className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
-                          type="submit"
-                          disabled={isLoading}
-                        >
-                          {isLoading ? (
-                            <motion.div
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              className="flex items-center"
-                            >
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Logging in...
-                            </motion.div>
-                          ) : (
-                            "Login"
-                          )}
-                        </Button>
-                      </form>
-                    </Form>
-                  </motion.div>
-                </AnimatePresence>
-              </Tabs>
-            </CardContent>
-            <CardFooter className="flex justify-center border-t border-gray-100 dark:border-gray-800 pt-4">
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Don&apos;t have an account?{" "}
-                <Link
-                  href="/signup"
-                  className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
+            </motion.div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <motion.div
+              className="flex flex-col space-y-2 text-center"
+              variants={itemVariants}
+            >
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  className="flex items-center justify-center gap-2"
                 >
-                  Create account
-                </Link>
-              </p>
-            </CardFooter>
-          </Card>
-        </motion.div>
+                  {/* Replace Google icon with a placeholder or remove it */}
+                  <span className="h-4 w-4">🌐</span>
+                  <span>Google</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex items-center justify-center gap-2"
+                >
+                  <Github className="h-4 w-4" />
+                  <span>GitHub</span>
+                </Button>
+              </div>
+              <div className="relative flex items-center justify-center">
+                <span className="absolute inset-x-0 h-px bg-border" />
+                <span className="relative bg-background px-2 text-xs text-muted-foreground">
+                  OR CONTINUE WITH
+                </span>
+              </div>
+            </motion.div>
+
+            <Form {...form}>
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-4"
+              >
+                <motion.div variants={itemVariants}>
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="your.email@example.com"
+                            {...field}
+                            className="bg-background"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </motion.div>
+
+                <motion.div variants={itemVariants}>
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="password"
+                            placeholder="••••••••"
+                            {...field}
+                            className="bg-background"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </motion.div>
+
+                <motion.div
+                  className="flex items-center justify-between"
+                  variants={itemVariants}
+                >
+                  <FormField
+                    control={form.control}
+                    name="rememberMe"
+                    render={({ field }) => (
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="rememberMe"
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                        <label
+                          htmlFor="rememberMe"
+                          className="text-sm font-medium text-muted-foreground"
+                        >
+                          Remember me
+                        </label>
+                      </div>
+                    )}
+                  />
+                  <Link
+                    href="/auth/forgot-password"
+                    className="text-sm font-medium text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </Link>
+                </motion.div>
+
+                <motion.div variants={itemVariants}>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : null}
+                    Sign In
+                  </Button>
+                </motion.div>
+              </form>
+            </Form>
+          </CardContent>
+          <CardFooter>
+            <motion.p
+              className="text-center text-sm text-muted-foreground w-full"
+              variants={itemVariants}
+            >
+              Don&apos;t have an account?{" "}
+              <Link
+                href="/register"
+                className="text-primary font-medium hover:underline"
+              >
+                Create an account
+              </Link>
+            </motion.p>
+          </CardFooter>
+        </Card>
       </motion.div>
     </div>
   );
