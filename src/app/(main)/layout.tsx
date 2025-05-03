@@ -14,8 +14,7 @@ export default function layout({
       enableSystem
       disableTransitionOnChange
     >
-      <NavbarDemo />
-      {children}
+      <NavbarDemo>{children}</NavbarDemo>
     </ThemeProvider>
   );
 }

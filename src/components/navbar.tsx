@@ -10,43 +10,66 @@ import {
   MobileNavToggle,
   MobileNavMenu,
 } from "@/components/resizable-navbar";
-import Link from "next/link";
+import { ShoppingCart } from "lucide-react";
 import { useState } from "react";
+import { ThemeToggle } from "./theme-toggle";
 
-export function NavbarDemo() {
+export function NavbarDemo({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   const navItems = [
     {
-      name: "Features",
-      link: "#features",
+      name: "Home",
+      link: "/home",
     },
     {
-      name: "How It Works",
-      link: "#how-it-works",
+      name: "Products",
+      link: "/products",
     },
     {
-      name: "Testimonials",
-      link: "#testimonials",
+      name: "Search",
+      link: "/search",
     },
     {
-      name: "Pricing",
-      link: "#pricing",
+      name: "Map",
+      link: "/map",
+    },
+    {
+      name: "Sell",
+      link: "/sell",
+    },
+    {
+      name: "Profile",
+      link: "/profile",
     },
   ];
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <div className="fixed top-6 z-50 w-full">
+    <div className="relative w-full">
       <Navbar>
+        {/* Desktop Navigation */}
         <NavBody>
           <NavbarLogo />
           <NavItems items={navItems} />
+          <div className="flex items-center gap-2">
+            <NavbarButton variant="secondary">
+              <ThemeToggle />
+            </NavbarButton>
 
-          <NavbarButton variant="primary" href="/login">
-            Get Started
-          </NavbarButton>
+            <NavbarButton
+              variant="primary"
+              className="flex justify-between items-center"
+            >
+              <ShoppingCart className="mr-2" /> Cart
+            </NavbarButton>
+          </div>
         </NavBody>
 
+        {/* Mobile Navigation */}
         <MobileNav>
           <MobileNavHeader>
             <NavbarLogo />
@@ -75,14 +98,23 @@ export function NavbarDemo() {
                 onClick={() => setIsMobileMenuOpen(false)}
                 variant="primary"
                 className="w-full"
-                href="/login"
               >
-                Get Started
+                Mode
+              </NavbarButton>
+              <NavbarButton
+                onClick={() => setIsMobileMenuOpen(false)}
+                variant="primary"
+                className="w-full"
+              >
+                Your Cart
               </NavbarButton>
             </div>
           </MobileNavMenu>
         </MobileNav>
       </Navbar>
+      {children}
+
+      {/* Navbar */}
     </div>
   );
 }
