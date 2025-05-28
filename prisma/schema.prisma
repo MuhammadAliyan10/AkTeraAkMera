@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
@@ -12,4 +9,203 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  BUYER
+  SELLER
+  ADMIN
+}
+
+enum ProductCondition {
+  NEW
+  LIKE_NEW
+  USED
+  DAMAGED
+}
+
+enum SwapStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COMPLETED
+  CANCELLED
+}
+
+enum NotificationType {
+  SWAP_REQUEST
+  SWAP_ACCEPTED
+  SWAP_REJECTED
+  MESSAGE
+  REVIEW
+}
+
+model User {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkId         String         @unique
+  email           String         @unique
+  name            String         @db.VarChar(100)
+  profileImage    String?        @db.VarChar(255)
+  role            UserRole       @default(BUYER)
+  phoneNumber     String?        @db.VarChar(20)
+  isVerified      Boolean        @default(false)
+  termsAccepted   Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  lastLoginAt     DateTime?
+  products        Product[]      @relation("UserProducts")
+  swapRequests    SwapRequest[]  @relation("UserSwapRequests")
+  transactions    SwapTransaction[] @relation("UserTransactions")
+  user2Transactions SwapTransaction[] @relation("User2Transactions")
+  reviewsGiven    Review[]       @relation("ReviewsGiven")
+  reviewsReceived Review[]       @relation("ReviewsReceived")
+  notifications   Notification[] @relation("UserNotifications")
+  messagesSent    Message[]      @relation("MessagesSent")
+  messagesReceived Message[]      @relation("MessagesReceived")
+
+  @@index([email])
+  @@index([clerkId])
+  @@index([role])
+}
+
+model Product {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title           String         @db.VarChar(255)
+  description     String?        @db.Text
+  ownerId         String         @db.Uuid
+  owner           User           @relation("UserProducts", fields: [ownerId], references: [id], onDelete: Cascade)
+  condition       ProductCondition @default(USED)
+  categoryId      String?        @db.Uuid
+  category        Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  desiredItems    String?        @db.Text
+  estimatedValue  Decimal?       @db.Decimal(10, 2)
+  location        Json?
+  address         String?        @db.VarChar(255)
+  images          ProductImage[]
+  tags            String[]
+  isAvailable     Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  deletedAt       DateTime?
+  swapRequests    SwapRequest[]  @relation("ProductSwapRequests")
+  reviews         Review[]       @relation("ProductReviews")
+  offeredInSwapRequests SwapRequest[] @relation("OfferedProduct")
+  product1Transactions SwapTransaction[] @relation("Product1Transactions")
+  product2Transactions SwapTransaction[] @relation("Product2Transactions")
+
+  @@index([ownerId])
+  @@index([categoryId])
+  @@index([isAvailable])
+  @@index([createdAt])
+}
+
+model ProductImage {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId       String         @db.Uuid
+  product         Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url             String         @db.VarChar(255)
+  altText         String?        @db.VarChar(255)
+  order           Int            @default(0)
+  createdAt       DateTime       @default(now())
+
+  @@index([productId])
+}
+
+model Category {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String         @unique @db.VarChar(100)
+  description     String?        @db.Text
+  products        Product[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([name])
+}
+
+model SwapRequest {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  requesterId     String         @db.Uuid
+  requester       User           @relation("UserSwapRequests", fields: [requesterId], references: [id], onDelete: Cascade)
+  productId       String         @db.Uuid
+  product         Product        @relation("ProductSwapRequests", fields: [productId], references: [id], onDelete: Cascade)
+  offeredProductId String?       @db.Uuid
+  offeredProduct  Product?       @relation("OfferedProduct", fields: [offeredProductId], references: [id], onDelete: SetNull)
+  status          SwapStatus     @default(PENDING)
+  message         String?        @db.Text
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([requesterId])
+  @@index([productId])
+  @@index([offeredProductId])
+  @@index([status])
+}
+
+model SwapTransaction {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user1Id         String         @db.Uuid
+  user1           User           @relation("UserTransactions", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2Id         String         @db.Uuid
+  user2           User           @relation("User2Transactions", fields: [user2Id], references: [id], onDelete: Cascade)
+  product1Id      String         @db.Uuid
+  product1        Product        @relation("Product1Transactions", fields: [product1Id], references: [id], onDelete: Cascade)
+  product2Id      String?        @db.Uuid
+  product2        Product?       @relation("Product2Transactions", fields: [product2Id], references: [id], onDelete: SetNull)
+  status          SwapStatus     @default(COMPLETED)
+  completedAt     DateTime?      @default(now())
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([user1Id])
+  @@index([user2Id])
+  @@index([product1Id])
+  @@index([product2Id])
+  @@index([status])
+}
+
+model Review {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId       String         @db.Uuid
+  product         Product        @relation("ProductReviews", fields: [productId], references: [id], onDelete: Cascade)
+  reviewerId      String         @db.Uuid
+  reviewer        User           @relation("ReviewsGiven", fields: [reviewerId], references: [id], onDelete: Cascade)
+  revieweeId      String         @db.Uuid
+  reviewee        User           @relation("ReviewsReceived", fields: [revieweeId], references: [id], onDelete: Cascade)
+  rating          Int            @db.SmallInt
+  comment         String?        @db.Text
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([productId])
+  @@index([reviewerId])
+  @@index([revieweeId])
+}
+
+model Notification {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String         @db.Uuid
+  user            User           @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  type            NotificationType
+  message         String         @db.Text
+  isRead          Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+
+  @@index([userId])
+  @@index([type])
+  @@index([isRead])
+}
+
+model Message {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  senderId        String         @db.Uuid
+  sender          User           @relation("MessagesSent", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId     String         @db.Uuid
+  recipient       User           @relation("MessagesReceived", fields: [recipientId], references: [id], onDelete: Cascade)
+  content         String         @db.Text
+  createdAt       DateTime       @default(now())
+  isRead          Boolean        @default(false)
+
+  @@index([senderId])
+  @@index([recipientId])
+  @@index([createdAt])
 }

@@ -24,7 +24,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 
 // Import ProductCard component
-import ProductCard from "@/components/ProductCard";
+import ProductCard from "@/components/Products/ProductCard";
 import { mockProducts, mockUsers } from "@/app/data/mock-data";
 import { Product, User } from "@/app/types";
 

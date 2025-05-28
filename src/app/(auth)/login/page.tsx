@@ -9,6 +9,8 @@ import * as z from "zod";
 import { motion } from "framer-motion";
 import { useTheme } from "next-themes";
 
+import { SignIn, SignInButton } from "@clerk/nextjs";
+
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -28,7 +30,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Github, Loader2 } from "lucide-react";
+import { Github, Loader2, PhoneCall } from "lucide-react";
 
 // Form schema for validation
 const formSchema = z.object({
@@ -129,14 +131,16 @@ export default function LoginPage() {
                 >
                   {/* Replace Google icon with a placeholder or remove it */}
                   <span className="h-4 w-4">🌐</span>
-                  <span>Google</span>
+                  <span>
+                    <SignInButton />
+                  </span>
                 </Button>
                 <Button
                   variant="outline"
                   className="flex items-center justify-center gap-2"
                 >
-                  <Github className="h-4 w-4" />
-                  <span>GitHub</span>
+                  <PhoneCall className="h-4 w-4" />
+                  <span>Phone</span>
                 </Button>
               </div>
               <div className="relative flex items-center justify-center">

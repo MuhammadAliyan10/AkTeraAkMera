@@ -1,21 +1,14 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Manrope } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+import { ClerkProvider } from "@clerk/nextjs";
+const manrope = Manrope({
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "AkTeraAkMera",
+  title: "Flipzy",
   description: "Your app description here",
   icons: {
     icon: "/favicon.ico",
@@ -29,20 +22,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={"${geistSans.variable} ${geistMono.variable} antialiased"}
-    >
-      <body className="antialiased">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
+    <ClerkProvider>
+      <html lang="en" suppressHydrationWarning>
+        <body
+          className={`${manrope.className} antialiased`}
+          suppressHydrationWarning
         >
-          {children}
-        </ThemeProvider>
-      </body>
-    </html>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+          </ThemeProvider>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
