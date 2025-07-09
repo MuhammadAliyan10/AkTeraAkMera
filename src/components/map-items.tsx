@@ -358,9 +358,7 @@ const MapExchange = ({
 
   // Get unique categories
   const categories = useMemo(() => {
-    const cats = new Set<string>(
-      products.map((product) => product.category.toLowerCase())
-    );
+    const cats = new Set<string>(products.map((product) => product.category));
     return ["all", ...Array.from(cats)];
   }, [products]);
 
@@ -511,7 +509,9 @@ const MapExchange = ({
               </label>
               <Slider
                 value={priceRange}
-                onValueChange={setPriceRange}
+                onValueChange={(value) =>
+                  setPriceRange(value as [number, number])
+                }
                 min={0}
                 max={1000}
                 step={10}

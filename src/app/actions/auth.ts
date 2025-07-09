@@ -25,8 +25,8 @@ export async function onAuthenticateUser() {
       data: {
         clerkId: user.id,
         email: user.emailAddresses[0].emailAddress,
-        name: user.firstName + " " + user.lastName,
-        profileImage: user.imageUrl,
+        fullName: user.firstName + " " + user.lastName,
+        profileImageUrl: user.imageUrl,
       },
     });
     if (!newUser) {

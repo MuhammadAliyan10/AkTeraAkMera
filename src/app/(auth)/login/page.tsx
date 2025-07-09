@@ -129,7 +129,6 @@ export default function LoginPage() {
                   variant="outline"
                   className="flex items-center justify-center gap-2"
                 >
-                  {/* Replace Google icon with a placeholder or remove it */}
                   <span className="h-4 w-4">🌐</span>
                   <span>
                     <SignInButton />

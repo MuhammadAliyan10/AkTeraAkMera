@@ -1,9 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -12,19 +8,338 @@ datasource db {
 }
 
 enum UserRole {
-  BUYER
-  SELLER
+  USER
   ADMIN
 }
 
-enum ProductCondition {
-  NEW
+model User {
+  id               Int              @id @default(autoincrement())
+  clerkId          String           @unique // Clerk user ID
+  fullName         String
+  email            String           @unique
+  age              Int?
+  phoneNumber      String?          @unique
+  cnic             String?          @unique
+  isVerified       Boolean          @default(false)
+  profileImageUrl  String?
+  userRole         UserRole         @default(USER)
+  paymentInfo      PaymentInfo?
+  location         Json?            // { lat: float, lng: float }
+  liveLocation     Json?            // { lat, lng, timestamp }
+  rating           Float            @default(0)      // average rating score (0-5)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  history          Json?            // optional logs or snapshots
+    sessions        Session[]      @relation("UserSessions")
+  listings         ItemListing[]
+  exchangesGiven   Exchange[]       @relation("ExchangesGiven")
+  exchangesReceived Exchange[]      @relation("ExchangesReceived")
+  payments         Payment[]
+  borrowRequests   BorrowRequest[]  @relation("BorrowerRequests")
+  borrowLendings   BorrowRequest[]  @relation("LenderRequests")
+  ratingsGiven     Rating[]         @relation("RatingsGiven")
+  ratingsReceived  Rating[]         @relation("RatingsReceived")
+  reportsFiled     Report[]         @relation("ReportsFiled")
+  reportsAgainst   Report[]         @relation("ReportsAgainst")
+  notifications    Notification[]
+
+  eventsHosted     Event[] @relation("EventHosts")
+  eventRegistrations EventRegistration[]
+
+  // Chat related relations
+  conversationsSent     Conversation[] @relation("UserConversationsSent")
+  conversationsReceived Conversation[] @relation("UserConversationsReceived")
+  messagesSent          Message[]      @relation("UserMessagesSent")
+  messagesReceived      Message[]      @relation("UserMessagesReceived")
+
+  // Zone relation
+  zone                 Zone?          @relation(fields: [zoneId], references: [id])
+  zoneId               Int?
+}
+
+
+model Session {
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation("UserSessions", fields: [userId], references: [clerkId], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+model Conversation {
+  id            Int       @id @default(autoincrement())
+  participantA  User      @relation("UserConversationsSent", fields: [participantAId], references: [id])
+  participantAId Int
+  participantB  User      @relation("UserConversationsReceived", fields: [participantBId], references: [id])
+  participantBId Int
+
+  itemListing   ItemListing? @relation(fields: [itemListingId], references: [id])
+  itemListingId Int?
+
+  exchange      Exchange?   @relation(fields: [exchangeId], references: [id])
+  exchangeId    Int?
+
+  messages      Message[]
+
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@unique([participantAId, participantBId])
+  @@index([participantAId])
+  @@index([participantBId])
+  @@index([itemListingId])
+  @@index([exchangeId])
+}
+
+model Message {
+  id              Int       @id @default(autoincrement())
+  conversation    Conversation @relation(fields: [conversationId], references: [id])
+  conversationId  Int
+
+  sender          User      @relation("UserMessagesSent", fields: [senderId], references: [id])
+  senderId        Int
+
+  receiver        User      @relation("UserMessagesReceived", fields: [receiverId], references: [id])
+  receiverId      Int
+
+  content         String
+  isRead          Boolean   @default(false)
+  sentAt          DateTime  @default(now())
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([isRead])
+}
+
+model PaymentInfo {
+  id              Int          @id @default(autoincrement())
+  user            User         @relation(fields: [userId], references: [id])
+  userId          Int          @unique
+  stripeCustomerId String?      // Stripe ID for payments
+  jazzCashId      String?      // JazzCash user id
+  easypaisaId     String?      // Easypaisa user id
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
+
+model Payment {
+  id               Int            @id @default(autoincrement())
+  user             User           @relation(fields: [userId], references: [id])
+  userId           Int
+  provider         PaymentProvider
+  providerPaymentId String
+  amountCents      Int
+  currency         Currency
+  status           PaymentStatus
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([provider])
+  @@index([status])
+}
+
+enum PaymentProvider {
+  STRIPE
+  JAZZCASH
+  EASYPASA
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum Currency {
+  PKR
+  USD
+  EUR
+  GBP
+  // extend as needed
+}
+
+model Zone {
+  id           Int       @id @default(autoincrement())
+  name         String    // e.g., "University Campus", "Mohallah 1"
+  centerLat    Float
+  centerLng    Float
+  radiusMeters Int       @default(1000) // 1 km radius default
+  createdAt    DateTime  @default(now())
+
+  users        User[]
+  listings     ItemListing[]
+  exchanges    Exchange[]
+  borrowRequests BorrowRequest[]
+  events       Event[]
+
+  @@index([centerLat, centerLng])
+}
+
+model ItemListing {
+  id              Int           @id @default(autoincrement())
+  owner           User          @relation(fields: [ownerId], references: [id])
+  ownerId         Int
+  zone            Zone          @relation(fields: [zoneId], references: [id])
+  zoneId          Int
+  name            String
+  description     String
+  condition       ItemCondition
+  category        ItemCategory
+  images          ItemImage[]
+  availability    Availability  @relation(fields: [availabilityId], references: [id])
+  availabilityId  Int @unique
+  priceModel      PriceModel
+  priceCents      Int           // base or starting price in cents
+  additionalNote  String?
+  isExchangeOnly  Boolean       @default(false) // lending/selling vs only exchange
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  exchangesGiven  Exchange[]    @relation("ItemsExchangedGiven")
+  exchangesReceived Exchange[]   @relation("ItemsExchangedReceived")
+  borrowRequests  BorrowRequest[]
+
+  // Conversation relation
+  conversations   Conversation[]
+
+  @@index([ownerId])
+  @@index([zoneId])
+  @@index([priceModel])
+  @@index([category])
+  @@index([isExchangeOnly])
+}
+
+enum ItemCondition {
   LIKE_NEW
+  GOOD
   USED
+  POOR
   DAMAGED
 }
 
-enum SwapStatus {
+enum ItemCategory {
+  CHARGER
+  SPORTS_EQUIPMENT
+  TOOL
+  ELECTRONIC
+  FURNITURE
+  BOOK
+  CLOTHING
+  ACCESSORY
+  OTHER
+}
+
+model ItemImage {
+  id          Int          @id @default(autoincrement())
+  item        ItemListing  @relation(fields: [itemId], references: [id])
+  itemId      Int
+  url         String
+  isPrimary   Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+
+  @@index([itemId])
+  @@index([isPrimary])
+}
+
+model Availability {
+  id          Int       @id @default(autoincrement())
+  startTime   DateTime
+  endTime     DateTime?
+
+  item        ItemListing?
+
+  @@index([startTime])
+  @@index([endTime])
+}
+
+enum PriceModel {
+  FIXED_TIME
+  USAGE_BASED
+}
+
+model Exchange {
+  id               Int          @id @default(autoincrement())
+
+  giver            User         @relation("ExchangesGiven", fields: [giverId], references: [id])
+  giverId          Int
+
+  receiver         User         @relation("ExchangesReceived", fields: [receiverId], references: [id])
+  receiverId       Int
+
+  itemGiven        ItemListing  @relation("ItemsExchangedGiven", fields: [itemGivenId], references: [id])
+  itemGivenId      Int
+
+  itemReceived     ItemListing? @relation("ItemsExchangedReceived", fields: [itemReceivedId], references: [id])
+  itemReceivedId   Int?
+
+  zone             Zone         @relation(fields: [zoneId], references: [id])
+  zoneId           Int
+
+  status           ExchangeStatus  @default(PENDING)
+  agreedAt         DateTime?
+  completedAt      DateTime?
+  cancelledAt      DateTime?
+
+  additionalNote   String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  borrowLocationTrackings BorrowLocationTracking[]
+
+  // Conversation and Rating relations
+  conversations   Conversation[]
+  ratings         Rating[]
+
+  @@index([giverId])
+  @@index([receiverId])
+  @@index([zoneId])
+  @@index([status])
+}
+
+enum ExchangeStatus {
+  PENDING
+  AGREED
+  COMPLETED
+  CANCELLED
+}
+
+// New model for one-way borrow requests (no exchange)
+model BorrowRequest {
+  id              Int          @id @default(autoincrement())
+  item            ItemListing  @relation(fields: [itemId], references: [id])
+  itemId          Int
+
+  borrower        User         @relation("BorrowerRequests", fields: [borrowerId], references: [id])
+  borrowerId      Int
+
+  lender          User         @relation("LenderRequests", fields: [lenderId], references: [id])
+  lenderId        Int
+
+  zone            Zone         @relation(fields: [zoneId], references: [id])
+  zoneId          Int
+
+  status          BorrowRequestStatus @default(PENDING)
+  termsAccepted   Boolean      @default(false)
+  requestedFrom   DateTime
+  requestedTo     DateTime
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  borrowLocationTrackings BorrowLocationTracking[]
+  ratings                Rating[]    // ratings for this borrow transaction
+
+  @@index([borrowerId])
+  @@index([lenderId])
+  @@index([zoneId])
+  @@index([status])
+}
+
+enum BorrowRequestStatus {
   PENDING
   ACCEPTED
   REJECTED
@@ -32,180 +347,137 @@ enum SwapStatus {
   CANCELLED
 }
 
-enum NotificationType {
-  SWAP_REQUEST
-  SWAP_ACCEPTED
-  SWAP_REJECTED
-  MESSAGE
-  REVIEW
+model BorrowLocationTracking {
+  id           Int       @id @default(autoincrement())
+  borrowRequest BorrowRequest? @relation(fields: [borrowRequestId], references: [id])
+  borrowRequestId Int?
+
+  exchange     Exchange? @relation(fields: [exchangeId], references: [id])
+  exchangeId   Int?
+
+  latitude     Float
+  longitude    Float
+  timestamp    DateTime  @default(now())
+
+  @@index([borrowRequestId])
+  @@index([exchangeId])
+  @@index([timestamp])
 }
 
-model User {
-  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  clerkId         String         @unique
-  email           String         @unique
-  name            String         @db.VarChar(100)
-  profileImage    String?        @db.VarChar(255)
-  role            UserRole       @default(BUYER)
-  phoneNumber     String?        @db.VarChar(20)
-  isVerified      Boolean        @default(false)
-  termsAccepted   Boolean        @default(false)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  lastLoginAt     DateTime?
-  products        Product[]      @relation("UserProducts")
-  swapRequests    SwapRequest[]  @relation("UserSwapRequests")
-  transactions    SwapTransaction[] @relation("UserTransactions")
-  user2Transactions SwapTransaction[] @relation("User2Transactions")
-  reviewsGiven    Review[]       @relation("ReviewsGiven")
-  reviewsReceived Review[]       @relation("ReviewsReceived")
-  notifications   Notification[] @relation("UserNotifications")
-  messagesSent    Message[]      @relation("MessagesSent")
-  messagesReceived Message[]      @relation("MessagesReceived")
+model Rating {
+  id           Int      @id @default(autoincrement())
+  rater        User     @relation("RatingsGiven", fields: [raterId], references: [id])
+  raterId      Int
+  ratee        User     @relation("RatingsReceived", fields: [rateeId], references: [id])
+  rateeId      Int
+  borrowRequest BorrowRequest? @relation(fields: [borrowRequestId], references: [id])
+  borrowRequestId Int?
 
-  @@index([email])
-  @@index([clerkId])
-  @@index([role])
+  exchange     Exchange? @relation(fields: [exchangeId], references: [id])
+  exchangeId   Int?
+
+  rating       Int      @default(5) @db.SmallInt  // 1-5 scale
+  feedback     String?
+  createdAt    DateTime @default(now())
+
+  @@index([raterId])
+  @@index([rateeId])
 }
 
-model Product {
-  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  title           String         @db.VarChar(255)
-  description     String?        @db.Text
-  ownerId         String         @db.Uuid
-  owner           User           @relation("UserProducts", fields: [ownerId], references: [id], onDelete: Cascade)
-  condition       ProductCondition @default(USED)
-  categoryId      String?        @db.Uuid
-  category        Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  desiredItems    String?        @db.Text
-  estimatedValue  Decimal?       @db.Decimal(10, 2)
-  location        Json?
-  address         String?        @db.VarChar(255)
-  images          ProductImage[]
-  tags            String[]
-  isAvailable     Boolean        @default(true)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  deletedAt       DateTime?
-  swapRequests    SwapRequest[]  @relation("ProductSwapRequests")
-  reviews         Review[]       @relation("ProductReviews")
-  offeredInSwapRequests SwapRequest[] @relation("OfferedProduct")
-  product1Transactions SwapTransaction[] @relation("Product1Transactions")
-  product2Transactions SwapTransaction[] @relation("Product2Transactions")
+model Report {
+  id           Int      @id @default(autoincrement())
+  reportedBy   User     @relation("ReportsFiled", fields: [reportedById], references: [id])
+  reportedById Int
+  reportedUser User     @relation("ReportsAgainst", fields: [reportedUserId], references: [id])
+  reportedUserId Int
+  reason       String
+  status       ReportStatus @default(OPEN)
+  adminNotes   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  @@index([ownerId])
-  @@index([categoryId])
-  @@index([isAvailable])
-  @@index([createdAt])
-}
-
-model ProductImage {
-  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  productId       String         @db.Uuid
-  product         Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
-  url             String         @db.VarChar(255)
-  altText         String?        @db.VarChar(255)
-  order           Int            @default(0)
-  createdAt       DateTime       @default(now())
-
-  @@index([productId])
-}
-
-model Category {
-  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name            String         @unique @db.VarChar(100)
-  description     String?        @db.Text
-  products        Product[]
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-
-  @@index([name])
-}
-
-model SwapRequest {
-  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  requesterId     String         @db.Uuid
-  requester       User           @relation("UserSwapRequests", fields: [requesterId], references: [id], onDelete: Cascade)
-  productId       String         @db.Uuid
-  product         Product        @relation("ProductSwapRequests", fields: [productId], references: [id], onDelete: Cascade)
-  offeredProductId String?       @db.Uuid
-  offeredProduct  Product?       @relation("OfferedProduct", fields: [offeredProductId], references: [id], onDelete: SetNull)
-  status          SwapStatus     @default(PENDING)
-  message         String?        @db.Text
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-
-  @@index([requesterId])
-  @@index([productId])
-  @@index([offeredProductId])
+  @@index([reportedById])
+  @@index([reportedUserId])
   @@index([status])
 }
 
-model SwapTransaction {
-  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user1Id         String         @db.Uuid
-  user1           User           @relation("UserTransactions", fields: [user1Id], references: [id], onDelete: Cascade)
-  user2Id         String         @db.Uuid
-  user2           User           @relation("User2Transactions", fields: [user2Id], references: [id], onDelete: Cascade)
-  product1Id      String         @db.Uuid
-  product1        Product        @relation("Product1Transactions", fields: [product1Id], references: [id], onDelete: Cascade)
-  product2Id      String?        @db.Uuid
-  product2        Product?       @relation("Product2Transactions", fields: [product2Id], references: [id], onDelete: SetNull)
-  status          SwapStatus     @default(COMPLETED)
-  completedAt     DateTime?      @default(now())
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-
-  @@index([user1Id])
-  @@index([user2Id])
-  @@index([product1Id])
-  @@index([product2Id])
-  @@index([status])
-}
-
-model Review {
-  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  productId       String         @db.Uuid
-  product         Product        @relation("ProductReviews", fields: [productId], references: [id], onDelete: Cascade)
-  reviewerId      String         @db.Uuid
-  reviewer        User           @relation("ReviewsGiven", fields: [reviewerId], references: [id], onDelete: Cascade)
-  revieweeId      String         @db.Uuid
-  reviewee        User           @relation("ReviewsReceived", fields: [revieweeId], references: [id], onDelete: Cascade)
-  rating          Int            @db.SmallInt
-  comment         String?        @db.Text
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-
-  @@index([productId])
-  @@index([reviewerId])
-  @@index([revieweeId])
+enum ReportStatus {
+  OPEN
+  REVIEWED
+  RESOLVED
+  REJECTED
 }
 
 model Notification {
-  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId          String         @db.Uuid
-  user            User           @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
-  type            NotificationType
-  message         String         @db.Text
-  isRead          Boolean        @default(false)
-  createdAt       DateTime       @default(now())
+  id           Int      @id @default(autoincrement())
+  user         User     @relation(fields: [userId], references: [id])
+  userId       Int
+  title        String
+  message      String
+  isRead       Boolean  @default(false)
+  createdAt    DateTime @default(now())
 
   @@index([userId])
-  @@index([type])
   @@index([isRead])
 }
 
-model Message {
-  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  senderId        String         @db.Uuid
-  sender          User           @relation("MessagesSent", fields: [senderId], references: [id], onDelete: Cascade)
-  recipientId     String         @db.Uuid
-  recipient       User           @relation("MessagesReceived", fields: [recipientId], references: [id], onDelete: Cascade)
-  content         String         @db.Text
-  createdAt       DateTime       @default(now())
-  isRead          Boolean        @default(false)
+model Event {
+  id            Int          @id @default(autoincrement())
+  host          User         @relation("EventHosts", fields: [hostId], references: [id])
+  hostId        Int
 
-  @@index([senderId])
-  @@index([recipientId])
-  @@index([createdAt])
+  title         String
+  description   String
+  category      EventCategory
+  location      Json         // { lat: Float, lng: Float, address: String? }
+  startTime     DateTime
+  endTime       DateTime
+
+  isPaid        Boolean      @default(false)
+  priceCents    Int?
+  currency      Currency?
+
+  registrants   EventRegistration[]
+
+  // Zone relation
+  zone          Zone?        @relation(fields: [zoneId], references: [id])
+  zoneId        Int?
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([hostId])
+  @@index([category])
+  @@index([startTime])
+  @@index([zoneId])
+}
+
+model EventRegistration {
+  id           Int                 @id @default(autoincrement())
+  event        Event               @relation(fields: [eventId], references: [id])
+  eventId      Int
+
+  user         User                @relation(fields: [userId], references: [id])
+  userId       Int
+
+  registeredAt DateTime            @default(now())
+  status       RegistrationStatus  @default(PENDING)
+
+  @@unique([eventId, userId])
+  @@index([userId])
+  @@index([status])
+}
+
+enum EventCategory {
+  SPORTS
+  COMMUNITY
+  EDUCATION
+  ENTERTAINMENT
+  OTHER
+}
+
+enum RegistrationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
 }
